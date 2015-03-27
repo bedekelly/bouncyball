@@ -61,11 +61,8 @@ void mainloop(Ball* ball, int lines, int cols, float acc)
     /* Deal with the ball in projectile motion. */
     while(ball->y > 1 || ball->upVelocity > 0.1 || ball->upVelocity < -0.1)
       {
-	
 	handle_keypress(getch(), ball);
 	clear();
-	mvprintw(1,1,"In bounce section");
-	mvprintw(2,1, "");
 	/* Handle collision with the floor */
 	if (ball->y + ball->upVelocity <= 0)
 	  {
@@ -130,7 +127,6 @@ void mainloop(Ball* ball, int lines, int cols, float acc)
 	ball->rightVelocity *= DRAG_COEFFICIENT;
 	ball->x += ball->rightVelocity;
 	clear();
-	mvprintw(1,1,"In friction section");
 	mvprintw(lines-ball->y, ball->x, "o");
 	refresh();
       }
