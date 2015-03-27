@@ -20,6 +20,7 @@ make bouncyBall
 
 Files
 ======
-'bouncyBall.c' contains the source.
-'bouncyBall' is a precompiled binary for AMD64
-'Makefile' does what it says on the tin
+
+* 'bouncyBall.c' contains the source.
+* 'bouncyBall' is a precompiled binary for AMD64
+* 'Makefile' does what it says on the tin
