@@ -46,17 +46,25 @@ bool handle_keypress(int c, Ball* ball)
       break;
     }
   case ARROW_KEY_DOWN:
-    ball->upVelocity -= FIRE_SPEED;
+    {
+      ball->upVelocity -= FIRE_SPEED;
+      break;
+    }
   case 'q':
-    should_quit = true;
+    {
+      should_quit = true;
+      break;
+    }
   default:
-    break;
+    {
+      break;
+    }
   }
   return should_quit;
 }
 
 
-int mainloop(Ball* ball, int lines, int cols, float acc, bool debug)
+int handle_motion(Ball* ball, int lines, int cols, float acc, bool debug)
 {
   FILE *fp;
   if (debug)
@@ -68,7 +76,8 @@ int mainloop(Ball* ball, int lines, int cols, float acc, bool debug)
   while(ball->y > ON_FLOOR || (ball->upVelocity > MIN_LINES_PER_DELAY
 			       || ball->upVelocity < -MIN_LINES_PER_DELAY))
     {
-      if(handle_keypress(getch(), ball) && debug)
+      int c = getch();
+      if(handle_keypress(c, ball))
 	{
 	  return 1;
 	}
@@ -118,7 +127,7 @@ int mainloop(Ball* ball, int lines, int cols, float acc, bool debug)
       int c;
       while ((c = getch()) != ERR)
 	{
-	  if(handle_keypress(c, ball) && debug)
+	  if(handle_keypress(c, ball))
 	    {
 	      return 1;
 	    }
@@ -216,16 +225,18 @@ int main(int argc, char* argv[])
   ball.upVelocity = 0;
   ball.rightVelocity = 1;
   
-  mainloop(&ball, lines, cols, acc, debug);
-  display_instructions();
-  int c;
-  while ((c = getch()) != 'q')
+  if(!handle_motion(&ball, lines, cols, acc, debug))
     {
-      if (c == ERR)
-	continue;
-      handle_keypress(c, &ball);
-      mainloop(&ball, lines, cols, acc, debug);
       display_instructions();
+      int c;
+      while ((c = getch()) != 'q')
+	{
+	  if (c == ERR)
+	    continue;
+	  if (handle_keypress(c, &ball)) break;
+	  if (handle_motion(&ball, lines, cols, acc, debug)) break;
+	  display_instructions();
+	}
     }
   endwin();
 }
