@@ -4,7 +4,6 @@
 #include <string.h>
 #define uSEC_PER_SEC 1000000
 #define DELAY 25000
-// 25000
 #define FIRE_SPEED 4
 #define g -9.81
 #define COLLISION_ELASTICITY 0.7
@@ -28,6 +27,12 @@ typedef struct
 
 bool handle_keypress(int c, Ball* ball)
 {
+  /*
+    Take the keypress data as input and determine how to alter the ball's
+     velocity.If the key is 'q', return true to let the mainloop know the user
+     wants to quit.
+  */
+
   bool should_quit = false;
   switch(c){
   case ARROW_KEY_UP:
@@ -55,10 +60,6 @@ bool handle_keypress(int c, Ball* ball)
       should_quit = true;
       break;
     }
-  default:
-    {
-      break;
-    }
   }
   return should_quit;
 }
@@ -66,23 +67,32 @@ bool handle_keypress(int c, Ball* ball)
 
 int handle_motion(Ball* ball, int lines, int cols, float acc, bool debug)
 {
+  // If we're in debugging mode, open a file to which we can write messages.
   FILE *fp;
   if (debug)
     {
       fp = fopen("debug", "a");
     }
 
-  /* Deal with the ball in projectile motion. */
+  /*
+    Deal with the ball in projectile motion. 
+    Loop condition: Either the ball isn't on the floor, or it's moving fast enough
+    towards/away from the floor that we know it'll bounce upwards again.
+   */
   while(ball->y > ON_FLOOR || (ball->upVelocity > MIN_LINES_PER_DELAY
 			       || ball->upVelocity < -MIN_LINES_PER_DELAY))
     {
+      usleep(DELAY);
+
+      /* If there's a character in the input buffer, read it and alter the ball's
+	 velocity accordingly. */
       int c = getch();
       if(handle_keypress(c, ball))
 	{
-	  return 1;
+	  return 1;  // Exit point when the user presses Q.
 	}
-      clear();
-      /* Handle collision with the floor */
+
+      /* Handle collision with the floor. */
       if (ball->y + ball->upVelocity <= 0)
 	{
 	  usleep(DELAY);
@@ -90,13 +100,15 @@ int handle_motion(Ball* ball, int lines, int cols, float acc, bool debug)
 	  ball->upVelocity *= (-1 * COLLISION_ELASTICITY);
 	}
 
-      /* Handle collision with the walls */
+      /* Handle collision with the right wall. */
       if (ball->x + ball->rightVelocity >= cols-1)
 	{
 	  usleep(DELAY);
 	  ball->x = cols;
 	  ball->rightVelocity *= (-1 * COLLISION_ELASTICITY);
 	}
+      
+      /* Handle collision with the left wall. */
       else if (ball->x + ball->rightVelocity <= 0)
 	{
 	  usleep(DELAY);
@@ -104,35 +116,36 @@ int handle_motion(Ball* ball, int lines, int cols, float acc, bool debug)
 	  ball->rightVelocity *= (-1 * COLLISION_ELASTICITY);
 	}
 
-      /* Update the ball's velocity and print accordingly. */
+      /* Update the ball's position due to velocity, and then velocity due to
+	 acceleration. */
       ball->y += ball->upVelocity;
       ball->x += ball->rightVelocity;
       ball->upVelocity += acc;
+      
+      /* Update the ball's position on the screen accordingly. */
+      clear();
       mvprintw(lines-ball->y, ball->x, "o");
       refresh();
+
+      // If we're in debug mode, output the ball's velocity components.
       if (debug){
 	fprintf(fp, "\n\nUp velocity: %2.2f", ball->upVelocity);
 	fprintf(fp, "\nRight velocity: %2.2f", ball->rightVelocity);
-	fflush(fp);
+	fflush(fp);  // Ensure we're actually writing the data NOW.
       }
-      usleep(DELAY);
     }
-  // Ensure there's no lingering momentum we ignored as being too small earlier.
-  ball->upVelocity = 0;
-
+  
   /* Deal with the ball rolling on the floor against friction. */
   while (ball->rightVelocity >= MIN_COLS_PER_DELAY
 	 || ball->rightVelocity <= -MIN_COLS_PER_DELAY)
     {
-      int c;
-      while ((c = getch()) != ERR)
-	{
-	  if(handle_keypress(c, ball))
-	    {
-	      return 1;
-	    }
-	}
       usleep(DELAY);
+
+      int c;
+      if(handle_keypress(c, ball))
+	{
+	  return 1;  // Exit point when the user presses Q.
+	}
 
       /* Handle collisions with the right and left walls. */
       if (ball->x + ball->rightVelocity >= cols-1)
@@ -148,45 +161,58 @@ int handle_motion(Ball* ball, int lines, int cols, float acc, bool debug)
 	  ball->rightVelocity *= (-1 * COLLISION_ELASTICITY);
 	}
 
-      /* Update the ball's velocity and print accordingly. */
+      /* Update the ball's velocity due to drag. */
       ball->rightVelocity *= DRAG_COEFFICIENT;
       ball->x += ball->rightVelocity;
+
+      /* Update the ball's position on screen accordingly. */
       clear();
       mvprintw(lines-ball->y, ball->x, "o");
       refresh();
+      
+      /* If we're in debug mode, write the ball's velocity components to the
+	 debug file. */
       if (debug)
 	{
 	  fprintf(fp, "\n\nUp velocity: %2.2f", ball->upVelocity);
 	  fprintf(fp, "\nRight velocity: %2.2f", ball->rightVelocity);
-	  fflush(fp);
+	  fflush(fp);  // Ensure we're actually writing the data NOW.
 	}
     }
-  ball->rightVelocity = 0;
 
   // Ensure there's no lingering momentum we ignored as being too small earlier.
   ball->upVelocity = 0;
   ball->rightVelocity = 0;
+
+  /* If we're in debug mode, write the ball's velocity components to the
+     debug file. */
   if(debug)
     {
       fprintf(fp, "\n\nUp velocity: %2.2f", ball->upVelocity);
       fprintf(fp, "\nRight velocity: %2.2f", ball->rightVelocity);
-      fflush(fp);
-      fclose(fp);
+      fflush(fp);  // Ensure we're writing the data NOW.
+      fclose(fp);  // Close our handle to the file buffer.
     }
 }
 
 
 void display_instructions()
 {
-  mvprintw(4, 3, "W: Fire upwards");
-  mvprintw(5, 3, "A: Fire left");
-  mvprintw(6, 3, "D: Fire right");
-  mvprintw(7, 3, "Q: Quit");
+  // Print out usage instructions to the top left-hand side of the screen.
+  mvprintw(2, 4, "W: Fire upwards");
+  mvprintw(3, 4, "A: Fire left");
+  mvprintw(4, 4, "D: Fire right");
+  mvprintw(5, 4, "S: Fire downwards");
+  mvprintw(6, 4, "Q: Quit");
+
+  // Outline the instructions by making a subwindow and 'box'ing it.
   WINDOW *instructions;
-  int width = 20, height = 6;
-  int x_offset=1, y_offset=3;
+  int width = 21, height = 7;
+  int x_offset=2, y_offset=1;
   instructions = newwin(height, width, y_offset, x_offset);
   box(instructions, 0, 0);
+
+  // Refresh the boxed window, and lastly the whole screen.
   wrefresh(instructions);
   refresh();
 }
@@ -194,20 +220,23 @@ void display_instructions()
 
 int main(int argc, char* argv[])
 {
-  printf("%d", argc);
+  // Setup curses.
   initscr();
   noecho();
   curs_set(FALSE);
+
+  // Make sure we don't have a delay after character presses.
   nodelay(stdscr, TRUE);
 
+  // Check for the --debug argument.
   bool debug = false;
-
   if (argc == 2)
     {
       debug = (!strcmp(argv[1], "--debug"));
     }
   if (debug)
     {
+      // If we're in debug mode, let the user know how to see output.
       mvprintw(4, 4, "DEBUG MODE");
       mvprintw(5, 4, "To see debug output, 'tail -f debug' in this directory.");
       mvprintw(6, 4, "Press any key to begin.");
@@ -215,28 +244,43 @@ int main(int argc, char* argv[])
       getchar();
     }
 
+  // Get the terminal size, and set the acceleration accordingly.
   int lines, cols;
   getmaxyx(stdscr, lines, cols);
   float acc = g / (float)lines;
 
+  // Make a new ball, and give it some initial rightward velocity.
   Ball ball;
   ball.x = 5;
   ball.y = lines;
   ball.upVelocity = 0;
   ball.rightVelocity = 1;
   
+  // If the user hasn't quit within the first bounce:
   if(!handle_motion(&ball, lines, cols, acc, debug))
     {
+      // Display usage instructions for the first time.
       display_instructions();
+
+      // Loop until the user presses Q.
       int c;
-      while ((c = getch()) != 'q')
-	{
-	  if (c == ERR)
-	    continue;
-	  if (handle_keypress(c, &ball)) break;
-	  if (handle_motion(&ball, lines, cols, acc, debug)) break;
-	  display_instructions();
-	}
+      while ((c = getch()) != 'q') {
+	if (c == ERR)  // If the user hasn't pressed anything yet, continue.
+	  continue;
+	
+	// Handle the key pressed by the user. If it's Q, exit the program.
+	if (handle_keypress(c, &ball)) break;
+	
+	/* Deal with the ball's subsequent motion. If the user presses Q at any
+	point, exit the program. */
+	if (handle_motion(&ball, lines, cols, acc, debug)) break;
+
+	/* User hasn't pressed Q and the ball's come to rest: display instructions
+	   again. */
+	display_instructions();
+      }
     }
+
+  // Return terminal control to its previous settings and exit the program.
   endwin();
 }
