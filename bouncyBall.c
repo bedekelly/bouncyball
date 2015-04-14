@@ -141,7 +141,7 @@ int handle_motion(Ball* ball, int lines, int cols, float acc, bool debug)
     {
       usleep(DELAY);
 
-      int c;
+      int c = getch();
       if(handle_keypress(c, ball))
 	{
 	  return 1;  // Exit point when the user presses Q.
