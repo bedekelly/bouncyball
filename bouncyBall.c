@@ -86,10 +86,13 @@ int handle_motion(Ball* ball, int lines, int cols, float acc, bool debug)
 
       /* If there's a character in the input buffer, read it and alter the ball's
 	 velocity accordingly. */
-      int c = getch();
-      if(handle_keypress(c, ball))
+      int c;
+      while((c = getch()) != ERR)
 	{
-	  return 1;  // Exit point when the user presses Q.
+	  if(handle_keypress(c, ball))
+	    {
+	      return 1;  // Exit point when the user presses Q.
+	    }
 	}
 
       /* Handle collision with the floor. */
@@ -141,12 +144,14 @@ int handle_motion(Ball* ball, int lines, int cols, float acc, bool debug)
     {
       usleep(DELAY);
 
-      int c = getch();
-      if(handle_keypress(c, ball))
+      int c;
+      while((c = getch()) != ERR)
 	{
-	  return 1;  // Exit point when the user presses Q.
+	  if(handle_keypress(c, ball))
+	    {
+	      return 1;  // Exit point when the user presses Q.
+	    }
 	}
-
       /* Handle collisions with the right and left walls. */
       if (ball->x + ball->rightVelocity >= cols-1)
 	{
